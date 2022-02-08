@@ -5,7 +5,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:visual_statistic/statistic_data_source.dart';
-import 'package:web_socket_channel/io.dart';
+import 'package:web_socket_channel/html.dart';
 
 class StatisticPage extends StatefulWidget {
   @override
@@ -14,6 +14,8 @@ class StatisticPage extends StatefulWidget {
 
 class _StatisticPageState extends State<StatisticPage> {
   final TextEditingController _controller = TextEditingController();
+  final TextEditingController _packageController = TextEditingController();
+  final TextEditingController _identifyController = TextEditingController();
 
   final List<Map<String, dynamic>>? data = [];
 
@@ -21,9 +23,11 @@ class _StatisticPageState extends State<StatisticPage> {
 
   bool isConnected = false;
 
-  IOWebSocketChannel? channel;
+  HtmlWebSocketChannel? channel;
 
   StreamSubscription? socketStream;
+
+  String? _package;
 
   @override
   void initState() {
@@ -32,16 +36,32 @@ class _StatisticPageState extends State<StatisticPage> {
   }
 
   void connectBtn() {
+    if (_packageController.text.trim().isEmpty) {
+      Fluttertoast.showToast(msg: '包名不能为空', webPosition: "center");
+      return;
+    }
     if (!isConnected) {
       try {
-        channel = IOWebSocketChannel.connect(Uri.parse(_controller.text));
-      }catch(e) {
+        channel = HtmlWebSocketChannel.connect(Uri.parse(_controller.text));
+      } catch (e) {
         Fluttertoast.showToast(msg: '连接地址错误', webPosition: "center");
         return;
       }
+      _package = _packageController.text;
+      channel?.sink.add(jsonEncode({
+        "type": "add",
+        "package": _packageController.text,
+        "identify": _identifyController.text
+      }));
       socketStream = channel?.stream.listen((message) {
         setState(() {
-          data?.add(jsonDecode(message));
+          _source = StatisticDataSource();
+          _source.data = data;
+          var res = jsonDecode(message);
+          if(res['packages'] == _package) {
+            res['time'] = DateTime.fromMillisecondsSinceEpoch(res['time']).toString();
+            data?.insert(0, res);
+          }
         });
       });
       setState(() {
@@ -88,6 +108,34 @@ class _StatisticPageState extends State<StatisticPage> {
             SizedBox(
               width: 10,
             ),
+            Text('包名'),
+            SizedBox(
+              width: 10,
+            ),
+            Container(
+              width: 200,
+              child: CupertinoTextField(
+                controller: _packageController,
+                placeholder: "包名",
+              ),
+            ),
+            SizedBox(
+              width: 10,
+            ),
+            Text('标识'),
+            SizedBox(
+              width: 10,
+            ),
+            Container(
+              width: 200,
+              child: CupertinoTextField(
+                controller: _identifyController,
+                placeholder: "标识",
+              ),
+            ),
+            SizedBox(
+              width: 10,
+            ),
             RaisedButton(
                 color: Colors.blue,
                 onPressed: !isConnected
@@ -122,6 +170,7 @@ class _StatisticPageState extends State<StatisticPage> {
           ),
           PaginatedDataTable(
             source: _source,
+            columnSpacing: 120.0,
             columns: <DataColumn>[
               DataColumn(label: const Text('包名'), numeric: false),
               DataColumn(label: const Text('标识'), numeric: false),

@@ -11,7 +11,7 @@ class StatisticDataSource extends DataTableSource {
       return null;
     } else {
       return DataRow.byIndex(index: index, cells: <DataCell>[
-        DataCell(Text('${data?[index]['package']}')),
+        DataCell(Text('${data?[index]['packages']}')),
         DataCell(Text('${data?[index]['identify']}')),
         DataCell(Text('${data?[index]['event']}')),
         DataCell(Text('${data?[index]['time']}')),
