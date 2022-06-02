@@ -2,10 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:visual_statistic/statistic_data_source.dart';
 import 'package:web_socket_channel/html.dart';
+import 'package:web_socket_channel/io.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 class StatisticPage extends StatefulWidget {
   @override
@@ -23,7 +26,7 @@ class _StatisticPageState extends State<StatisticPage> {
 
   bool isConnected = false;
 
-  HtmlWebSocketChannel? channel;
+  WebSocketChannel? channel;
 
   StreamSubscription? socketStream;
 
@@ -42,7 +45,11 @@ class _StatisticPageState extends State<StatisticPage> {
     }
     if (!isConnected) {
       try {
-        channel = HtmlWebSocketChannel.connect(Uri.parse(_controller.text));
+        if (kIsWeb) {
+          channel = HtmlWebSocketChannel.connect(Uri.parse(_controller.text));
+        } else {
+          channel = IOWebSocketChannel.connect(Uri.parse(_controller.text));
+        }
       } catch (e) {
         Fluttertoast.showToast(msg: '连接地址错误', webPosition: "center");
         return;
@@ -58,8 +65,9 @@ class _StatisticPageState extends State<StatisticPage> {
           _source = StatisticDataSource();
           _source.data = data;
           var res = jsonDecode(message);
-          if(res['packages'] == _package) {
-            res['time'] = DateTime.fromMillisecondsSinceEpoch(res['time']).toString();
+          if (res['packages'] == _package) {
+            res['time'] =
+                DateTime.fromMillisecondsSinceEpoch(res['time']).toString();
             data?.insert(0, res);
           }
         });
@@ -180,5 +188,11 @@ class _StatisticPageState extends State<StatisticPage> {
             ],
           )
         ])));
+  }
+
+  @override
+  void dispose() {
+    disconnectBtn();
+    super.dispose();
   }
 }
